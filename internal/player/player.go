@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 internal/music 的曲目与源合同、internal/lyrics 的行模型、internal/i18n 的错误文案，以及 mygo 音频栈；歌词目录配置与查询由 lyrics.go 承担，补全开关与配置由 SetLyricFallback / SetLyricConfig 在 UI 线程写入
+ * [OUTPUT]: 对外提供 Player 的队列、播放、远程控制、会话、SetLyricFallback、SetLyricConfig、ClearLyricCache 与歌词生命周期，供 internal/app 驱动
+ * [POS]: internal/player 的播放器核心；音频流、远程播放、缓存与歌词补全分别由 stream/remote/cache/lyrics.go 分担，歌词来源标记、目录配置与在途代次在此串行维护
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 package player
 
 import (
@@ -12,6 +18,7 @@ import (
 
 	"mygo-music/internal/i18n"
 	"mygo-music/internal/lyrics"
+	"mygo-music/internal/lyrics/source"
 	"mygo-music/internal/music"
 )
 
@@ -64,7 +71,7 @@ type Player struct {
 	track   *music.Track
 	out     *audio.Player
 	stream  stream
-	watch   *watched // stream, as out plays it
+	watch   *watched      // stream, as out plays it
 	info    *music.Stream // what the current track streams
 	fade    fader
 	gain    float64 // the current track's normalizing gain
@@ -75,6 +82,21 @@ type Player struct {
 
 	lyrics       []lyrics.Line
 	lyricsLoaded bool
+	// lyricsCatalogue says the current lines came from the catalogues, not
+	// the track's source or the app: turning the fallback off drops them.
+	lyricsCatalogue bool
+	// lyricFallback lets the catalogues fill in lyrics the current source
+	// lacks; New starts it off.
+	lyricFallback bool
+	// lyricConfig is what the catalogue chain is built with when the fallback
+	// is on; New keeps the defaults until SetLyricConfig says otherwise.
+	lyricConfig source.Config
+	// lyricsLookup asks the catalogues for lyrics the current source lacks;
+	// it is built when the fallback is turned on, and rebuilt for a new config.
+	lyricsLookup lyricsProvider
+	// lyricsStop cancels the lookup in flight, when the track changes or the
+	// player stops.
+	lyricsStop func()
 
 	// pending holds a seek asked for while the track loads.
 	pending time.Duration
@@ -102,7 +124,7 @@ type Player struct {
 }
 
 func New(post func(func())) *Player {
-	p := &Player{post: post, at: -1, volume: 0.8, gain: 1}
+	p := &Player{post: post, at: -1, volume: 0.8, gain: 1, lyricConfig: source.DefaultConfig()}
 	p.after = func(d time.Duration, fn func()) { time.AfterFunc(d, fn) }
 	p.now = time.Now
 	// Music, mixed far enough ahead to play on while macOS keeps the app
@@ -601,6 +623,10 @@ func (p *Player) Levels() ([Bands]float32, bool) {
 }
 
 func (p *Player) stop() {
+	if p.lyricsStop != nil {
+		p.lyricsStop()
+		p.lyricsStop = nil
+	}
 	if out := p.out; out != nil {
 		// Paused first, it fades out over a few milliseconds, rather than
 		// stopping with a click.
@@ -674,7 +700,7 @@ func (p *Player) loadSkipping(at, skipped, dir int, play bool, from time.Duratio
 	p.track = &t
 	p.loading, p.playing, p.err = true, play, ""
 	p.awaiting = false
-	p.lyrics, p.lyricsLoaded = nil, false
+	p.lyrics, p.lyricsLoaded, p.lyricsCatalogue = nil, false, false
 	p.pending = from
 	p.recorded = ""
 	p.announce(&t, nil)
@@ -754,24 +780,6 @@ func (p *Player) loadCover(gen int, t *music.Track) {
 				}
 			})
 		}
-	}()
-}
-
-// loadLyrics asks the source of t for its lyrics, if it has any.
-func (p *Player) loadLyrics(gen int, src music.Source, t music.Track) {
-	go func() {
-		var lines []lyrics.Line
-		if src != nil && src.Can("lyrics") {
-			if l, err := src.Lyrics(t.ID); err == nil && l != nil {
-				lines = lyrics.FromSource(l)
-			}
-		}
-		p.post(func() {
-			if gen == p.gen {
-				p.lyrics = lines
-				p.lyricsLoaded = true
-			}
-		})
 	}()
 }
 

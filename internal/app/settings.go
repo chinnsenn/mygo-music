@@ -1,3 +1,9 @@
+/*
+[INPUT]: 依赖 encoding/json、os、filepath 与 mygo.App.Path，读取用户数据目录下的 settings.json；翻译词条来自 internal/i18n；歌词目录参数来自 internal/lyrics/source
+[OUTPUT]: 对外提供 settings 结构（含 LyricFallback 与 LyricConfig）、defaultSettings、loadSettings、save、applyAppearance 以及画质与缓存上限表
+[POS]: internal/app 的持久化层：app 启动时载入、设置界面经 changed 回写；歌词目录参数在载入后归一化，新增字段须同步 tags 与默认值
+[PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+*/
 package app
 
 import (
@@ -9,6 +15,7 @@ import (
 	"github.com/egoist/mygo"
 
 	"mygo-music/internal/i18n"
+	"mygo-music/internal/lyrics/source"
 )
 
 // settings are the listener's choices, kept in settings.json in the user
@@ -65,6 +72,12 @@ type settings struct {
 	// StageSparks throws sparks off each word on the stage as it is sung,
 	// whatever its style.
 	StageSparks bool `json:"stageSparks,omitempty"`
+	// LyricFallback fills in a song's lyrics from another source when its own
+	// source has none; the source's own lyrics always come first.
+	LyricFallback bool `json:"lyricFallback"`
+	// LyricConfig is how the catalogues are asked and what their answers are
+	// kept in, whether or not LyricFallback asks them.
+	LyricConfig source.Config `json:"lyricConfig"`
 	// Volume is where the volume was left, from 0 to 1.
 	Volume float64 `json:"volume"`
 	// Normalize evens out the loudness of tracks, by what their source
@@ -91,7 +104,7 @@ type settings struct {
 }
 
 func defaultSettings() settings {
-	return settings{Language: i18n.System, NotchActivity: true, Quality: "high", Appearance: "system", Volume: 0.8, Normalize: true, AppIcon: "dock-and-menubar", CacheMB: 2048}
+	return settings{Language: i18n.System, NotchActivity: true, Quality: "high", Appearance: "system", Volume: 0.8, Normalize: true, AppIcon: "dock-and-menubar", CacheMB: 2048, LyricConfig: source.DefaultConfig()}
 }
 
 func settingsPath() (string, error) {
@@ -111,6 +124,7 @@ func loadSettings() settings {
 		}
 		s.path = path
 	}
+	s.LyricConfig = s.LyricConfig.Normalized()
 	return s
 }
 

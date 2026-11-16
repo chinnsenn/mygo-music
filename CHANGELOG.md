@@ -2,6 +2,16 @@
 
 All notable changes to MyGo Music are written down here. Versions follow [Semantic Versioning](https://semver.org).
 
+## [Unreleased]
+
+### Added
+
+- Settings > Experiments > Cross-Source Lyrics is off by default and can fill in timed lyrics when a song's source has none. Choose up to three lyric sources in priority order, overall and per-request timeouts, hit and miss cache lifetimes and cache capacity; a separate button clears lyric lookup caches without deleting songs. Changes are saved and apply to the current song when enabled. Matching considers artist, title, album, duration and live versions, including Traditional and Simplified Chinese metadata. Local LRC and plugin-provided word timings take priority.
+
+### Changed
+
+- Cross-Source Lyrics preferences appear only while enabled, in a compact indented form with contextual help instead of nested cards and repeated descriptions. Turning the feature off preserves its saved parameters.
+
 ## [0.1.25] - 2026-11-14
 
 ### Added

@@ -1,3 +1,9 @@
+/*
+[INPUT]: 依赖 mygo、ui、local、plugin、player、music 与 internal/i18n；持有窗口、托盘、播放器与音源库
+[OUTPUT]: 对外提供 app 结构、post/redraw、makeSources、Run 等应用生命周期入口
+[POS]: internal/app 的根：创建播放器与窗口、装配设置与音源，启动时把歌词目录参数与 LyricFallback 交给播放器
+[PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+*/
 package app
 
 import (
@@ -354,6 +360,8 @@ func Run() error {
 		a.pl.Quality = func() string { return a.settings.Quality }
 		a.pl.Normalize = func() bool { return a.settings.Normalize }
 		a.pl.Cache = newSongCache(a.settings.CacheMB)
+		a.pl.SetLyricConfig(a.settings.LyricConfig)
+		a.pl.SetLyricFallback(a.settings.LyricFallback)
 		a.pl.Changed = func() {
 			a.keepSession()
 			a.syncCaptions()

@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 music.Source 的远程播放接口、RemoteState 与播放器主线程调度和时钟
+ * [OUTPUT]: 包内提供远程播放命令、状态轮询与曲目跟随，维护远端播放位置和歌词装载代次
+ * [POS]: internal/player 的远程播放适配层；跟随新曲目时清空歌词及来源标记，再交给统一歌词加载器处理实验开关
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 package player
 
 import (
@@ -404,7 +410,7 @@ func (p *Player) follow(r *remote, at int, st *music.RemoteState) {
 	t := p.queue[p.order[at]]
 	p.track = &t
 	p.err = ""
-	p.lyrics, p.lyricsLoaded = nil, false
+	p.lyrics, p.lyricsLoaded, p.lyricsCatalogue = nil, false, false
 	r.seen, r.near, r.polls = true, false, 0
 	r.pos, r.at, r.running = time.Duration(st.Position)*time.Millisecond, p.now(), st.Playing
 	r.duration = time.Duration(st.Duration) * time.Millisecond

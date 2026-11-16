@@ -1,5 +1,15 @@
 # AGENTS.md
 
+## Code map
+
+Go 1.27.3 + MyGo v0.9.0; native views consume the shared `music.Source` plugin contract.
+
+- `internal/app/`: native views and persisted settings; see [app map](internal/app/AGENTS.md). Experiments exposes the default-off lyric fallback switch, source priorities, timeouts and cache preferences.
+
+- `internal/player/`: audio playback, queues and asynchronous lyric loading; see [player map](internal/player/AGENTS.md).
+- `internal/lyrics/`: timed lyric parsing and word timing; see [lyrics map](internal/lyrics/AGENTS.md).
+- `internal/lyrics/source/`: metadata matching and configurable ordered catalogue lookups. Source-provided lyrics take priority; catalogue requests send track metadata without source credentials, with bounded timeouts and caches.
+
 ## Tests
 
 Only write a test for behaviour that can actually break. If the code under test could change without the test noticing, or the test would fail on a harmless rewording, don't write it.
