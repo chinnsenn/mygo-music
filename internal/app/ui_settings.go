@@ -69,6 +69,10 @@ func (a *app) openSourceSettings() {
 // changed applies the settings everywhere and keeps them.
 func (a *app) changed() {
 	a.settings.save()
+	if a.pl != nil {
+		a.pl.SetLyricConfig(a.settings.LyricConfig)
+		a.pl.SetLyricFallback(a.settings.LyricFallback)
+	}
 	a.settings.applyAppearance()
 	if a.notch != nil {
 		a.notch.setEnabled(a.settings.Notch)
@@ -486,6 +490,29 @@ func (a *app) settingsSections(c *ui.Context, p palette) []settingsSection {
 				a.changed()
 			}
 		})
+		row(T("Cross-Source Lyrics"), T("When a song's own source has no lyrics, look them up using the sources below. The source's own lyrics always come first."), func() {
+			if ui.Switch(c.Key("lyric-fallback"), &s.LyricFallback).Label(T("Cross-Source Lyrics")).Changed() {
+				a.changed()
+			}
+		})
+		if s.LyricFallback {
+			details := settingsSection{id: "lyric-parameters", build: func(row settingsRow, _ settingsBlock) {
+				a.lyricSettings(c, row)
+			}}
+			query := strings.ToLower(strings.TrimSpace(a.settingsQuery))
+			parentMatch := query == "" || settingsMatch(query, T("Experiments"), T("Cross-Source Lyrics"))
+			if parentMatch || a.settingsFinds(details, query) {
+				block(query, func() {
+					ui.Column(c.Key("lyric-details")).Padding(8, 16, 12, 32).Gap(2).Children(func() {
+						filter := query
+						if parentMatch {
+							filter = ""
+						}
+						a.lyricSettingsGroup(c, p, filter)
+					})
+				})
+			}
+		}
 	})
 
 	if a.updates {

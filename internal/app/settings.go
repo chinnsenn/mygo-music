@@ -9,6 +9,7 @@ import (
 	"github.com/egoist/mygo"
 
 	"mygo-music/internal/i18n"
+	"mygo-music/internal/lyrics/source"
 )
 
 // settings are the listener's choices, kept in settings.json in the user
@@ -65,6 +66,12 @@ type settings struct {
 	// StageSparks throws sparks off each word on the stage as it is sung,
 	// whatever its style.
 	StageSparks bool `json:"stageSparks,omitempty"`
+	// LyricFallback fills in a song's lyrics from another source when its own
+	// source has none; the source's own lyrics always come first.
+	LyricFallback bool `json:"lyricFallback"`
+	// LyricConfig is how the catalogues are asked and what their answers are
+	// kept in, whether or not LyricFallback asks them.
+	LyricConfig source.Config `json:"lyricConfig"`
 	// Volume is where the volume was left, from 0 to 1.
 	Volume float64 `json:"volume"`
 	// Normalize evens out the loudness of tracks, by what their source
@@ -91,7 +98,7 @@ type settings struct {
 }
 
 func defaultSettings() settings {
-	return settings{Language: i18n.System, NotchActivity: true, Quality: "high", Appearance: "system", Volume: 0.8, Normalize: true, AppIcon: "dock-and-menubar", CacheMB: 2048}
+	return settings{Language: i18n.System, NotchActivity: true, Quality: "high", Appearance: "system", Volume: 0.8, Normalize: true, AppIcon: "dock-and-menubar", CacheMB: 2048, LyricConfig: source.DefaultConfig()}
 }
 
 func settingsPath() (string, error) {
@@ -111,6 +118,7 @@ func loadSettings() settings {
 		}
 		s.path = path
 	}
+	s.LyricConfig = s.LyricConfig.Normalized()
 	return s
 }
 

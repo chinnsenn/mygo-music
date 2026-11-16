@@ -23,9 +23,15 @@ func (p *Player) Cue(tracks []music.Track) {
 	p.track = &p.queue[0]
 }
 
-// SetLyrics gives the current track lines, as loaded.
+// SetLyrics gives the current track lines, as loaded, and drops a lookup still
+// on its way: the injected lines are the ones to show. They aren't a
+// catalogue's, so turning the fallback off keeps them.
 func (p *Player) SetLyrics(lines []lyrics.Line) {
-	p.lyrics, p.lyricsLoaded = lines, true
+	if p.lyricsStop != nil {
+		p.lyricsStop()
+		p.lyricsStop = nil
+	}
+	p.lyrics, p.lyricsLoaded, p.lyricsCatalogue = lines, true, false
 }
 
 // Hold makes the player play at pos with nothing to play: its position

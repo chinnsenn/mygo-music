@@ -354,6 +354,8 @@ func Run() error {
 		a.pl.Quality = func() string { return a.settings.Quality }
 		a.pl.Normalize = func() bool { return a.settings.Normalize }
 		a.pl.Cache = newSongCache(a.settings.CacheMB)
+		a.pl.SetLyricConfig(a.settings.LyricConfig)
+		a.pl.SetLyricFallback(a.settings.LyricFallback)
 		a.pl.Changed = func() {
 			a.keepSession()
 			a.syncCaptions()
